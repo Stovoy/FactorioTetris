@@ -1,0 +1,40 @@
+{
+  "name": "factoriotetris",
+  "private": true,
+  "version": "0.1.0",
+  "description": "FactorioTetris is a GitHub Pages SPA for planning and optimizing Factorio equipment grids.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.node.json && vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "keywords": [
+    "factorio",
+    "equipment-grid",
+    "optimizer",
+    "react",
+    "vite"
+  ],
+  "license": "ISC",
+  "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^4.3.4",
+    "eslint": "^9.39.1",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "typescript": "^6.0.2",
+    "typescript-eslint": "^8.58.0",
+    "vite": "^5.4.19"
+  }
+}
