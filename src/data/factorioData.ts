@@ -1,6 +1,7 @@
 import type {
   EquipmentItem,
   GridHost,
+  PowerLocation,
   QualityLevel,
   QualityMap,
 } from '../types';
@@ -23,11 +24,79 @@ const icon = (file: string, size = 32) =>
   `https://wiki.factorio.com/images/thumb/${file}.png/${size}px-${file}.png`;
 
 export const qualityLevels: QualityLevel[] = [
-  { id: 'normal', label: 'Normal', shortLabel: 'N', accent: '#8f9785' },
-  { id: 'uncommon', label: 'Uncommon', shortLabel: 'U', accent: '#67d36e' },
-  { id: 'rare', label: 'Rare', shortLabel: 'R', accent: '#66aaff' },
-  { id: 'epic', label: 'Epic', shortLabel: 'E', accent: '#d06dff' },
-  { id: 'legendary', label: 'Legendary', shortLabel: 'L', accent: '#ffb240' },
+  {
+    id: 'normal',
+    label: 'Normal',
+    shortLabel: 'N',
+    accent: '#8f9785',
+    imageUrl: icon('Quality_normal', 24),
+  },
+  {
+    id: 'uncommon',
+    label: 'Uncommon',
+    shortLabel: 'U',
+    accent: '#67d36e',
+    imageUrl: icon('Quality_uncommon', 24),
+  },
+  {
+    id: 'rare',
+    label: 'Rare',
+    shortLabel: 'R',
+    accent: '#66aaff',
+    imageUrl: icon('Quality_rare', 24),
+  },
+  {
+    id: 'epic',
+    label: 'Epic',
+    shortLabel: 'E',
+    accent: '#d06dff',
+    imageUrl: icon('Quality_epic', 24),
+  },
+  {
+    id: 'legendary',
+    label: 'Legendary',
+    shortLabel: 'L',
+    accent: '#ffb240',
+    imageUrl: icon('Quality_legendary', 24),
+  },
+];
+
+export const powerLocations: PowerLocation[] = [
+  {
+    id: 'nauvis',
+    label: 'Nauvis',
+    kind: 'surface',
+    solarMultiplier: 1,
+    dayNightCycleSeconds: 420,
+  },
+  {
+    id: 'vulcanus',
+    label: 'Vulcanus',
+    kind: 'surface',
+    solarMultiplier: 4,
+    dayNightCycleSeconds: 90,
+  },
+  {
+    id: 'gleba',
+    label: 'Gleba',
+    kind: 'surface',
+    solarMultiplier: 0.5,
+    dayNightCycleSeconds: 600,
+  },
+  {
+    id: 'fulgora',
+    label: 'Fulgora',
+    kind: 'surface',
+    solarMultiplier: 0.2,
+    dayNightCycleSeconds: 180,
+  },
+  {
+    id: 'aquilo',
+    label: 'Aquilo',
+    kind: 'surface',
+    solarMultiplier: 0.01,
+    dayNightCycleSeconds: 1200,
+  },
 ];
 
 export const gridHosts: GridHost[] = [
@@ -124,6 +193,23 @@ export const gridHosts: GridHost[] = [
 ];
 
 export const equipmentItems: EquipmentItem[] = [
+  {
+    id: 'portable-fusion-reactor',
+    name: 'Portable fusion reactor',
+    category: 'generation',
+    width: 4,
+    height: 4,
+    imageUrl: icon('Portable_fusion_reactor'),
+    sourceUrl: 'https://wiki.factorio.com/Infobox:Portable_fusion_reactor',
+    note: 'Space Age reactor equipment. Highest-density unlimited grid power source.',
+    qualities: q(
+      { generationKw: 2500, averageGenerationKw: 2500 },
+      { generationKw: 3250, averageGenerationKw: 3250 },
+      { generationKw: 4000, averageGenerationKw: 4000 },
+      { generationKw: 4750, averageGenerationKw: 4750 },
+      { generationKw: 6250, averageGenerationKw: 6250 },
+    ),
+  },
   {
     id: 'portable-solar-panel',
     name: 'Portable solar panel',
@@ -380,4 +466,3 @@ export const equipmentItems: EquipmentItem[] = [
     ),
   },
 ];
-

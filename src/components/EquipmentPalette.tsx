@@ -3,6 +3,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { qualityLevels } from '../data/factorioData';
 import type { EquipmentCategory, EquipmentItem, QualityId } from '../types';
 import { formatEnergy, formatPower } from '../lib/stats';
+import { QualityIcon } from './QualityIcon';
 
 interface EquipmentPaletteProps {
   items: EquipmentItem[];
@@ -95,34 +96,36 @@ export function EquipmentPalette({
     <section className="panel">
       <div className="panel-header">
         <h2>Equipment palette</h2>
-        <p>Drag a module into the grid, or tap a card and then tap a cell.</p>
       </div>
-      <div className="quality-row">
-        {qualityLevels.map((quality) => (
-          <button
-            key={quality.id}
-            className={`quality-pill ${
-              selectedQuality === quality.id ? 'is-selected' : ''
-            }`}
-            onClick={() => onSelectQuality(quality.id)}
-            style={{ borderColor: quality.accent }}
-            type="button"
-          >
-            {quality.label}
-          </button>
-        ))}
-      </div>
-      <div className="filter-row">
-        {categories.map((category) => (
-          <button
-            key={category}
-            className={`filter-pill ${filter === category ? 'is-selected' : ''}`}
-            onClick={() => onSelectFilter(category)}
-            type="button"
-          >
-            {category === 'all' ? 'All' : category}
-          </button>
-        ))}
+      <div className="palette-controls">
+        <div className="quality-row quality-row--toolbar">
+          {qualityLevels.map((quality) => (
+            <button
+              key={quality.id}
+              className={`quality-pill ${
+                selectedQuality === quality.id ? 'is-selected' : ''
+              }`}
+              onClick={() => onSelectQuality(quality.id)}
+              style={{ borderColor: quality.accent }}
+              type="button"
+              title={quality.label}
+            >
+              <QualityIcon active={selectedQuality === quality.id} quality={quality.id} />
+            </button>
+          ))}
+        </div>
+        <div className="filter-row filter-row--toolbar">
+          {categories.map((category) => (
+            <button
+              key={category}
+              className={`filter-pill ${filter === category ? 'is-selected' : ''}`}
+              onClick={() => onSelectFilter(category)}
+              type="button"
+            >
+              {category === 'all' ? 'All' : category}
+            </button>
+          ))}
+        </div>
       </div>
       <label className="search-field">
         <span>Search</span>
@@ -133,7 +136,7 @@ export function EquipmentPalette({
           value={search}
         />
       </label>
-      <div className="palette-list">
+      <div className="palette-list panel-scroll">
         {items.map((item) => (
           <PaletteItem
             key={item.id}
@@ -147,4 +150,3 @@ export function EquipmentPalette({
     </section>
   );
 }
-

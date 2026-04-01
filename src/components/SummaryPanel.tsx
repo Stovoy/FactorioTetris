@@ -1,35 +1,60 @@
 import { formatEnergy, formatPower } from '../lib/stats';
-import type { BuildSummary, EquipmentItem, GridHost, Placement } from '../types';
+import type { BuildSummary, PowerLocation } from '../types';
 
 interface SummaryPanelProps {
-  host: GridHost;
+  location: PowerLocation;
   summary: BuildSummary;
-  placements: Placement[];
-  selectedPlacementId: string | null;
-  itemMap: Record<string, EquipmentItem>;
-  onRotate: () => void;
-  onRemove: () => void;
 }
 
-export function SummaryPanel({
-  host,
-  summary,
-  placements,
-  selectedPlacementId,
-  itemMap,
-  onRotate,
-  onRemove,
-}: SummaryPanelProps) {
-  const selectedPlacement = placements.find(
-    (placement) => placement.id === selectedPlacementId,
-  );
-  const selectedItem = selectedPlacement ? itemMap[selectedPlacement.itemId] : null;
+const formatMinutes = (minutes: number | null) => {
+  if (minutes === null) {
+    return 'Stable';
+  }
 
+  if (!Number.isFinite(minutes)) {
+    return 'Unlimited';
+  }
+
+  if (minutes >= 60) {
+    return `${(minutes / 60).toFixed(1)} h`;
+  }
+
+  return `${minutes.toFixed(1)} min`;
+};
+
+const formatRechargeMinutes = (minutes: number | null) => {
+  if (minutes === null) {
+    return 'Never';
+  }
+
+  return formatMinutes(minutes);
+};
+
+const formatSeconds = (seconds: number | null) => {
+  if (seconds === null) {
+    return 'Stable';
+  }
+
+  if (!Number.isFinite(seconds)) {
+    return 'Unlimited';
+  }
+
+  if (seconds >= 60) {
+    return `${(seconds / 60).toFixed(1)} min`;
+  }
+
+  return `${seconds.toFixed(1)} s`;
+};
+
+export function SummaryPanel({
+  location,
+  summary,
+}: SummaryPanelProps) {
   return (
     <section className="panel">
       <div className="panel-header">
         <h2>Build summary</h2>
-        <p>Totals are computed from the encoded Factorio wiki quality values.</p>
+        <span className="panel-header__meta">{location.label}</span>
       </div>
       <div className="stat-grid">
         <div>
@@ -43,8 +68,12 @@ export function SummaryPanel({
           <strong>{summary.inventorySlots} slots</strong>
         </div>
         <div>
-          <span>Peak generation</span>
-          <strong>{formatPower(summary.generationKw)}</strong>
+          <span>Day generation</span>
+          <strong>{formatPower(summary.dayGenerationKw)}</strong>
+        </div>
+        <div>
+          <span>Night generation</span>
+          <strong>{formatPower(summary.nightGenerationKw)}</strong>
         </div>
         <div>
           <span>Peak draw</span>
@@ -52,8 +81,24 @@ export function SummaryPanel({
         </div>
         <div>
           <span>Peak net</span>
-          <strong className={summary.netPeakKw >= 0 ? 'good' : 'bad'}>
+          <strong className={summary.peakSustainable ? 'good' : 'bad'}>
             {formatPower(summary.netPeakKw)}
+          </strong>
+        </div>
+        <div>
+          <span>Sustained draw</span>
+          <strong>{formatPower(summary.sustainedDrawKw)}</strong>
+        </div>
+        <div>
+          <span>Day net</span>
+          <strong className={summary.dayNetKw >= 0 ? 'good' : 'bad'}>
+            {formatPower(summary.dayNetKw)}
+          </strong>
+        </div>
+        <div>
+          <span>Night net</span>
+          <strong className={summary.nightNetKw >= 0 ? 'good' : 'bad'}>
+            {formatPower(summary.nightNetKw)}
           </strong>
         </div>
         <div>
@@ -63,11 +108,43 @@ export function SummaryPanel({
           </strong>
         </div>
         <div>
+          <span>Peak burst support</span>
+          <strong className={summary.peakSustainable ? 'good' : 'bad'}>
+            {formatSeconds(summary.peakBurstSeconds)}
+          </strong>
+        </div>
+        <div>
+          <span>Cycle stable</span>
+          <strong className={summary.cycleSustainable ? 'good' : 'bad'}>
+            {summary.cycleSustainable ? 'Yes' : 'No'}
+          </strong>
+        </div>
+        <div>
           <span>Stored energy</span>
           <strong>{formatEnergy(summary.energyCapacityMj)}</strong>
         </div>
         <div>
-          <span>Movement bonus</span>
+          <span>Cycle buffer needed</span>
+          <strong>{formatEnergy(summary.requiredCycleBufferMj)}</strong>
+        </div>
+        <div>
+          <span>Battery recharge time</span>
+          <strong>{formatRechargeMinutes(summary.batteryRechargeMinutes)}</strong>
+        </div>
+        <div>
+          <span>Night sustained battery support</span>
+          <strong>{formatMinutes(summary.nightBatteryMinutes)}</strong>
+        </div>
+        <div>
+          <span>Full-dark window</span>
+          <strong>
+            {summary.fullDarkMinutes > 0
+              ? formatMinutes(summary.fullDarkMinutes)
+              : 'None'}
+          </strong>
+        </div>
+        <div>
+          <span>Movement speed bonus</span>
           <strong>+{summary.movementBonusPercent}%</strong>
         </div>
         <div>
@@ -103,36 +180,6 @@ export function SummaryPanel({
           </strong>
         </div>
       </div>
-      {selectedItem ? (
-        <div className="selection-card">
-          <div>
-            <strong>{selectedItem.name}</strong>
-            <span>{selectedPlacement?.quality} quality</span>
-            <a href={selectedItem.sourceUrl} rel="noreferrer" target="_blank">
-              Factorio wiki source
-            </a>
-          </div>
-          <div className="selection-actions">
-            <button onClick={onRotate} type="button">
-              Rotate
-            </button>
-            <button onClick={onRemove} type="button">
-              Remove
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div className="selection-card">
-          <div>
-            <strong>{host.name}</strong>
-            <span>{host.note}</span>
-            <a href={host.sourceUrl} rel="noreferrer" target="_blank">
-              Factorio wiki source
-            </a>
-          </div>
-        </div>
-      )}
     </section>
   );
 }
-

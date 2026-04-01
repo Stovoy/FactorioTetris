@@ -1,5 +1,6 @@
 import type { GridHost, QualityId } from '../types';
 import { qualityLevels } from '../data/factorioData';
+import { QualityIcon } from './QualityIcon';
 
 interface HostSelectorProps {
   hosts: GridHost[];
@@ -20,7 +21,6 @@ export function HostSelector({
     <section className="panel">
       <div className="panel-header">
         <h2>Host grid</h2>
-        <p>Pick armor or vehicle quality before you start arranging modules.</p>
       </div>
       <div className="host-grid">
         {hosts.map((host) => {
@@ -36,7 +36,6 @@ export function HostSelector({
               <img alt="" src={host.imageUrl} />
               <div>
                 <strong>{host.name}</strong>
-                <span>{host.type === 'player' ? 'Player armor' : 'Vehicle'}</span>
                 <span>
                   {stats.width}×{stats.height} grid
                 </span>
@@ -46,7 +45,7 @@ export function HostSelector({
           );
         })}
       </div>
-      <div className="quality-row">
+      <div className="quality-row host-quality-row">
         {qualityLevels.map((quality) => (
           <button
             key={quality.id}
@@ -56,12 +55,12 @@ export function HostSelector({
             onClick={() => onSelectQuality(quality.id)}
             style={{ borderColor: quality.accent }}
             type="button"
+            title={quality.label}
           >
-            {quality.label}
+            <QualityIcon active={selectedHostQuality === quality.id} quality={quality.id} />
           </button>
         ))}
       </div>
     </section>
   );
 }
-

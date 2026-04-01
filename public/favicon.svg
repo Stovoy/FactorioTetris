@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="8" y1="6" x2="56" y2="58" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2c261f" />
+      <stop offset="1" stop-color="#111516" />
+    </linearGradient>
+    <linearGradient id="steel" x1="14" y1="14" x2="46" y2="46" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#88866f" />
+      <stop offset="1" stop-color="#45493f" />
+    </linearGradient>
+    <linearGradient id="accent" x1="40" y1="8" x2="56" y2="24" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ffd26f" />
+      <stop offset="1" stop-color="#d88724" />
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="56" height="56" rx="14" fill="url(#bg)" />
+  <rect x="4.5" y="4.5" width="55" height="55" rx="13.5" stroke="#4c3a1f" />
+  <g opacity=".95">
+    <rect x="13" y="13" width="34" height="34" rx="6" fill="url(#steel)" stroke="#cf9a43" />
+    <path d="M24 18h12l4 6v12l-4 6H24l-4-6V24l4-6Z" fill="#1f2421" stroke="#c5a16a"/>
+    <path d="M18 24h24M18 32h24M18 40h24M24 18v24M32 18v24M40 18v24" stroke="#c5a16a" stroke-opacity=".25"/>
+  </g>
+  <g transform="translate(39 7)">
+    <circle cx="10" cy="10" r="10" fill="#120f08" fill-opacity=".92"/>
+    <path d="M10 1.8 12.4 7.2 18.2 7.7 13.8 11.5 15.2 17.1 10 14 4.8 17.1 6.2 11.5 1.8 7.7 7.6 7.2 10 1.8Z" fill="url(#accent)" stroke="#ffe2a4" stroke-width=".8"/>
+  </g>
+</svg>

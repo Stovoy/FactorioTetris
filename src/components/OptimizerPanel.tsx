@@ -1,23 +1,55 @@
-import type { AutoOptimizeSettings } from '../types';
+import type { AutoOptimizeSettings, PowerLocation } from '../types';
 
 interface OptimizerPanelProps {
+  powerLocationId: string;
+  powerLocations: PowerLocation[];
   settings: AutoOptimizeSettings;
   onChange: (settings: AutoOptimizeSettings) => void;
+  onSelectLocation: (locationId: string) => void;
   onRun: () => void;
 }
 
 export function OptimizerPanel({
+  powerLocationId,
+  powerLocations,
   settings,
   onChange,
+  onSelectLocation,
   onRun,
 }: OptimizerPanelProps) {
+  const setInclude = (
+    key:
+      | 'includeEnergyShield'
+      | 'includeRoboport'
+      | 'includeNightvision'
+      | 'includeBeltImmunity',
+    checked: boolean,
+  ) => {
+    onChange({
+      ...settings,
+      [key]: checked,
+    });
+  };
+
   return (
     <section className="panel">
       <div className="panel-header">
         <h2>Auto optimizer</h2>
-        <p>Greedy first-fit optimizer tuned for energy-aware combat and mobility layouts.</p>
       </div>
       <div className="field-grid">
+        <label>
+          <span>Solar location</span>
+          <select
+            onChange={(event) => onSelectLocation(event.target.value)}
+            value={powerLocationId}
+          >
+            {powerLocations.map((location) => (
+              <option key={location.id} value={location.id}>
+                {location.label}
+              </option>
+            ))}
+          </select>
+        </label>
         <label>
           <span>Objective</span>
           <select
@@ -30,56 +62,45 @@ export function OptimizerPanel({
             value={settings.objective}
           >
             <option value="balanced">Balanced</option>
-            <option value="minimum-power-deficit">Minimum power deficit</option>
             <option value="max-exoskeletons">Max exoskeletons</option>
             <option value="max-lasers">Max lasers</option>
             <option value="max-shields">Max shields</option>
-            <option value="max-battery">Max battery</option>
           </select>
         </label>
-        <label>
-          <span>Max exoskeletons</span>
+      </div>
+      <div className="optimizer-includes">
+        <span>Include essentials</span>
+        <label className="optimizer-toggle">
           <input
-            min={0}
-            onChange={(event) =>
-              onChange({ ...settings, maxExoskeletons: Number(event.target.value) })
-            }
-            type="number"
-            value={settings.maxExoskeletons}
+            checked={settings.includeEnergyShield}
+            onChange={(event) => setInclude('includeEnergyShield', event.target.checked)}
+            type="checkbox"
           />
+          <span>Energy shield</span>
         </label>
-        <label>
-          <span>Max laser defenses</span>
+        <label className="optimizer-toggle">
           <input
-            min={0}
-            onChange={(event) =>
-              onChange({ ...settings, maxLaserDefenses: Number(event.target.value) })
-            }
-            type="number"
-            value={settings.maxLaserDefenses}
+            checked={settings.includeRoboport}
+            onChange={(event) => setInclude('includeRoboport', event.target.checked)}
+            type="checkbox"
           />
+          <span>Roboport</span>
         </label>
-        <label>
-          <span>Min fission reactors</span>
+        <label className="optimizer-toggle">
           <input
-            min={0}
-            onChange={(event) =>
-              onChange({ ...settings, minReactors: Number(event.target.value) })
-            }
-            type="number"
-            value={settings.minReactors}
+            checked={settings.includeNightvision}
+            onChange={(event) => setInclude('includeNightvision', event.target.checked)}
+            type="checkbox"
           />
+          <span>Night vision</span>
         </label>
-        <label>
-          <span>Reserve MK3 batteries</span>
+        <label className="optimizer-toggle">
           <input
-            min={0}
-            onChange={(event) =>
-              onChange({ ...settings, reserveBatteries: Number(event.target.value) })
-            }
-            type="number"
-            value={settings.reserveBatteries}
+            checked={settings.includeBeltImmunity}
+            onChange={(event) => setInclude('includeBeltImmunity', event.target.checked)}
+            type="checkbox"
           />
+          <span>Belt immunity</span>
         </label>
       </div>
       <button className="primary-button" onClick={onRun} type="button">

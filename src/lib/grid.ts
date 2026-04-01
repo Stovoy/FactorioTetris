@@ -10,12 +10,9 @@ export const createPlacementId = (() => {
   return () => `placement-${counter++}`;
 })();
 
-export const getItemFootprint = (
-  item: EquipmentItem,
-  rotated: boolean,
-): { width: number; height: number } => ({
-  width: rotated ? item.height : item.width,
-  height: rotated ? item.width : item.height,
+export const getItemFootprint = (item: EquipmentItem): { width: number; height: number } => ({
+  width: item.width,
+  height: item.height,
 });
 
 export const doesPlacementFit = (
@@ -33,7 +30,7 @@ export const doesPlacementFit = (
     return false;
   }
 
-  const footprint = getItemFootprint(item, placement.rotated);
+  const footprint = getItemFootprint(item);
 
   if (
     placement.x < 0 ||
@@ -50,7 +47,7 @@ export const doesPlacementFit = (
     }
 
     const candidateItem = itemMap[candidate.itemId];
-    const candidateFootprint = getItemFootprint(candidateItem, candidate.rotated);
+    const candidateFootprint = getItemFootprint(candidateItem);
     const overlaps =
       placement.x < candidate.x + candidateFootprint.width &&
       placement.x + footprint.width > candidate.x &&
@@ -71,7 +68,7 @@ export const getUsedCellCount = (
 ) =>
   placements.reduce((total, placement) => {
     const item = itemMap[placement.itemId];
-    const footprint = getItemFootprint(item, placement.rotated);
+    const footprint = getItemFootprint(item);
     return total + footprint.width * footprint.height;
   }, 0);
 
@@ -94,38 +91,22 @@ export const packTemplates = (
 
   for (const template of ordered) {
     const item = itemMap[template.itemId];
-    const tried = new Set<string>();
+    const footprint = getItemFootprint(item);
     let placed = false;
 
-    for (const rotated of [false, true]) {
-      const footprint = getItemFootprint(item, rotated);
-      const key = `${footprint.width}x${footprint.height}`;
+    for (let y = 0; y <= hostStats.height - footprint.height; y += 1) {
+      for (let x = 0; x <= hostStats.width - footprint.width; x += 1) {
+        const placement: Placement = {
+          id: createPlacementId(),
+          itemId: template.itemId,
+          quality: template.quality,
+          x,
+          y,
+        };
 
-      if (tried.has(key)) {
-        continue;
-      }
-
-      tried.add(key);
-
-      for (let y = 0; y <= hostStats.height - footprint.height; y += 1) {
-        for (let x = 0; x <= hostStats.width - footprint.width; x += 1) {
-          const placement: Placement = {
-            id: createPlacementId(),
-            itemId: template.itemId,
-            quality: template.quality,
-            x,
-            y,
-            rotated,
-          };
-
-          if (doesPlacementFit(placement, host, hostQuality, itemMap, placements)) {
-            placements.push(placement);
-            placed = true;
-            break;
-          }
-        }
-
-        if (placed) {
+        if (doesPlacementFit(placement, host, hostQuality, itemMap, placements)) {
+          placements.push(placement);
+          placed = true;
           break;
         }
       }
@@ -142,4 +123,3 @@ export const packTemplates = (
 
   return placements;
 };
-

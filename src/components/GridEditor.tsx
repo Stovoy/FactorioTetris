@@ -2,6 +2,8 @@ import { useDroppable, useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { getItemFootprint } from '../lib/grid';
 import type { EquipmentItem, GridHost, Placement, QualityId } from '../types';
+import { EntityBadge } from './EntityBadge';
+import { QualityIcon } from './QualityIcon';
 
 function Cell({
   x,
@@ -31,15 +33,17 @@ function PlacementTile({
   item,
   placement,
   selected,
+  onRemove,
   onSelect,
 }: {
   item: EquipmentItem;
   placement: Placement;
   selected: boolean;
+  onRemove: (id: string) => void;
   onSelect: (id: string) => void;
 }) {
-  const footprint = getItemFootprint(item, placement.rotated);
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+  const footprint = getItemFootprint(item);
+  const { listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `placement:${placement.id}`,
     data: {
       kind: 'placement',
@@ -50,24 +54,45 @@ function PlacementTile({
   });
 
   return (
-    <button
+    <div
       ref={setNodeRef}
       className={`placement-tile ${selected ? 'is-selected' : ''}`}
       onClick={() => onSelect(placement.id)}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onSelect(placement.id);
+        }
+      }}
+      role="button"
+      tabIndex={0}
       style={{
         gridColumn: `${placement.x + 1} / span ${footprint.width}`,
         gridRow: `${placement.y + 1} / span ${footprint.height}`,
         transform: CSS.Translate.toString(transform),
         opacity: isDragging ? 0.55 : 1,
       }}
-      type="button"
       {...listeners}
-      {...attributes}
     >
+      <button
+        className="placement-tile__remove"
+        onClick={(event) => {
+          event.stopPropagation();
+          onRemove(placement.id);
+        }}
+        onPointerDown={(event) => {
+          event.stopPropagation();
+        }}
+        type="button"
+      >
+        x
+      </button>
       <img alt="" src={item.imageUrl} />
       <span>{item.name}</span>
-      <small>{placement.quality}</small>
-    </button>
+      <span className="placement-tile__quality">
+        <QualityIcon compact quality={placement.quality} />
+      </span>
+    </div>
   );
 }
 
@@ -78,6 +103,7 @@ interface GridEditorProps {
   itemMap: Record<string, EquipmentItem>;
   selectedPlacementId: string | null;
   onPlaceAtCell: (x: number, y: number) => void;
+  onRemovePlacement: (placementId: string) => void;
   onSelectPlacement: (placementId: string | null) => void;
 }
 
@@ -88,6 +114,7 @@ export function GridEditor({
   itemMap,
   selectedPlacementId,
   onPlaceAtCell,
+  onRemovePlacement,
   onSelectPlacement,
 }: GridEditorProps) {
   const stats = host.qualities[hostQuality];
@@ -96,9 +123,12 @@ export function GridEditor({
     <section className="panel panel--grid">
       <div className="panel-header">
         <h2>Grid editor</h2>
-        <p>
-          {host.name} at {hostQuality} quality. Current grid is {stats.width}×{stats.height}.
-        </p>
+        <div className="panel-header__meta">
+          <EntityBadge imageUrl={host.imageUrl} label={host.name} large quality={hostQuality} />
+          <span>
+            {stats.width}×{stats.height}
+          </span>
+        </div>
       </div>
       <div className="grid-shell">
         <div
@@ -125,6 +155,7 @@ export function GridEditor({
             <PlacementTile
               key={placement.id}
               item={itemMap[placement.itemId]}
+              onRemove={onRemovePlacement}
               onSelect={onSelectPlacement}
               placement={placement}
               selected={selectedPlacementId === placement.id}
@@ -135,4 +166,3 @@ export function GridEditor({
     </section>
   );
 }
-

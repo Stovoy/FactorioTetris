@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type CSSProperties } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -8,7 +8,7 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from '@dnd-kit/core';
-import { equipmentItems, gridHosts } from './data/factorioData';
+import { equipmentItems, gridHosts, powerLocations } from './data/factorioData';
 import { AccessPanel } from './components/AccessPanel';
 import { HostSelector } from './components/HostSelector';
 import { EquipmentPalette } from './components/EquipmentPalette';
@@ -16,7 +16,8 @@ import { GridEditor } from './components/GridEditor';
 import { OptimizerPanel } from './components/OptimizerPanel';
 import { SummaryPanel } from './components/SummaryPanel';
 import { autoOptimize } from './lib/optimizer';
-import { createPlacementId, doesPlacementFit } from './lib/grid';
+import { createPlacementId, doesPlacementFit, getItemFootprint } from './lib/grid';
+import { QualityIcon } from './components/QualityIcon';
 import { summarizeBuild } from './lib/stats';
 import type {
   AccessMatrix,
@@ -27,12 +28,17 @@ import type {
   QualityId,
 } from './types';
 
+interface DragPreview {
+  itemId: string;
+  quality: QualityId;
+}
+
 const initialOptimizer: AutoOptimizeSettings = {
   objective: 'balanced',
-  maxExoskeletons: 8,
-  maxLaserDefenses: 16,
-  minReactors: 1,
-  reserveBatteries: 0,
+  includeEnergyShield: false,
+  includeRoboport: false,
+  includeNightvision: false,
+  includeBeltImmunity: false,
 };
 
 const createEnabledQualities = (): QualityMap<boolean> => ({
@@ -58,7 +64,9 @@ function parseCellId(cellId: string | null) {
 }
 
 export default function App() {
-  const [selectedHostId, setSelectedHostId] = useState('power-armor-mk2');
+  const [selectedHostId, setSelectedHostId] = useState('modular-armor');
+  const [selectedPowerLocationId, setSelectedPowerLocationId] =
+    useState('nauvis');
   const [selectedHostQuality, setSelectedHostQuality] =
     useState<QualityId>('normal');
   const [selectedEquipmentQuality, setSelectedEquipmentQuality] =
@@ -68,7 +76,7 @@ export default function App() {
   const [placements, setPlacements] = useState<Placement[]>([]);
   const [filter, setFilter] = useState<EquipmentCategory | 'all'>('all');
   const [search, setSearch] = useState('');
-  const [dragPreviewLabel, setDragPreviewLabel] = useState<string | null>(null);
+  const [dragPreview, setDragPreview] = useState<DragPreview | null>(null);
   const [optimizerSettings, setOptimizerSettings] =
     useState<AutoOptimizeSettings>(initialOptimizer);
   const [accessMatrix, setAccessMatrix] = useState<AccessMatrix>(createAccessMatrix);
@@ -84,6 +92,12 @@ export default function App() {
   const host = useMemo(
     () => gridHosts.find((candidate) => candidate.id === selectedHostId) ?? gridHosts[0],
     [selectedHostId],
+  );
+  const powerLocation = useMemo(
+    () =>
+      powerLocations.find((candidate) => candidate.id === selectedPowerLocationId) ??
+      powerLocations[0],
+    [selectedPowerLocationId],
   );
   const itemMap = useMemo(
     () =>
@@ -104,8 +118,8 @@ export default function App() {
     });
   }, [filter, search]);
   const summary = useMemo(
-    () => summarizeBuild(host, selectedHostQuality, placements, itemMap),
-    [host, itemMap, placements, selectedHostQuality],
+    () => summarizeBuild(host, selectedHostQuality, placements, itemMap, powerLocation),
+    [host, itemMap, placements, powerLocation, selectedHostQuality],
   );
 
   const placeItemAt = (
@@ -115,16 +129,12 @@ export default function App() {
     y: number,
     existingPlacementId?: string,
   ) => {
-    const placement = existingPlacementId
-      ? placements.find((candidate) => candidate.id === existingPlacementId)
-      : null;
     const nextPlacement: Placement = {
       id: existingPlacementId ?? createPlacementId(),
       itemId,
       quality,
       x,
       y,
-      rotated: placement?.rotated ?? false,
     };
 
     const nextPlacements = existingPlacementId
@@ -163,18 +173,22 @@ export default function App() {
   const handleDragStart = (event: DragStartEvent) => {
     const rawId = String(event.active.id);
     if (rawId.startsWith('palette:')) {
-      const [, itemId] = rawId.split(':');
-      setDragPreviewLabel(itemMap[itemId]?.name ?? null);
+      const [, itemId, quality] = rawId.split(':');
+      setDragPreview({ itemId, quality: quality as QualityId });
     } else if (rawId.startsWith('placement:')) {
       const placement = placements.find(
         (candidate) => candidate.id === rawId.replace('placement:', ''),
       );
-      setDragPreviewLabel(placement ? itemMap[placement.itemId].name : null);
+      setDragPreview(
+        placement
+          ? { itemId: placement.itemId, quality: placement.quality }
+          : null,
+      );
     }
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
-    setDragPreviewLabel(null);
+    setDragPreview(null);
     if (!event.over) {
       return;
     }
@@ -201,44 +215,13 @@ export default function App() {
     }
   };
 
-  const handleRotatePlacement = () => {
-    if (!selectedPlacementId) {
-      return;
-    }
-
-    const current = placements.find((placement) => placement.id === selectedPlacementId);
-    if (!current) {
-      return;
-    }
-
-    const rotated = { ...current, rotated: !current.rotated };
-    const nextPlacements = placements.map((placement) =>
-      placement.id === current.id ? rotated : placement,
-    );
-
-    if (
-      doesPlacementFit(
-        rotated,
-        host,
-        selectedHostQuality,
-        itemMap,
-        nextPlacements,
-        current.id,
-      )
-    ) {
-      setPlacements(nextPlacements);
-    }
-  };
-
-  const handleRemovePlacement = () => {
-    if (!selectedPlacementId) {
-      return;
-    }
-
+  const handleRemovePlacement = (placementId: string) => {
     setPlacements((current) =>
-      current.filter((placement) => placement.id !== selectedPlacementId),
+      current.filter((placement) => placement.id !== placementId),
     );
-    setSelectedPlacementId(null);
+    setSelectedPlacementId((current) =>
+      current === placementId ? null : current,
+    );
   };
 
   const handleRunOptimizer = () => {
@@ -248,6 +231,7 @@ export default function App() {
       itemMap,
       optimizerSettings,
       accessMatrix,
+      powerLocation,
     );
     setPlacements(optimized);
     setSelectedPlacementId(null);
@@ -283,6 +267,20 @@ export default function App() {
     }));
   };
 
+  const setQualityAccess = (quality: QualityId, enabled: boolean) => {
+    setAccessMatrix((current) =>
+      Object.fromEntries(
+        equipmentItems.map((item) => [
+          item.id,
+          {
+            ...current[item.id],
+            [quality]: enabled,
+          },
+        ]),
+      ),
+    );
+  };
+
   const setAllAccess = (enabled: boolean) => {
     setAccessMatrix(
       Object.fromEntries(
@@ -307,33 +305,7 @@ export default function App() {
       sensors={sensors}
     >
       <main className="app-shell">
-        <header className="hero">
-          <div className="hero__copy">
-            <span className="eyebrow">Factorio equipment planner</span>
-            <h1>FactorioTetris</h1>
-            <p>
-              Drag, rotate, compare, and auto-fill equipment layouts for modular
-              armor, tank, and spidertron grids. Current host coverage matches the
-              official Factorio wiki pages that expose vanilla equipment grids.
-            </p>
-          </div>
-          <div className="hero__aside">
-            <div>
-              <span>Wiki-backed data</span>
-              <strong>{equipmentItems.length} equipment modules</strong>
-            </div>
-            <div>
-              <span>Grid hosts</span>
-              <strong>{gridHosts.length} vanilla hosts</strong>
-            </div>
-            <div>
-              <span>Quality tiers</span>
-              <strong>Normal to legendary</strong>
-            </div>
-          </div>
-        </header>
-
-        <div className="layout">
+        <div className="layout workspace">
           <div className="layout-main">
             <HostSelector
               hosts={gridHosts}
@@ -347,13 +319,14 @@ export default function App() {
               hostQuality={selectedHostQuality}
               itemMap={itemMap}
               onPlaceAtCell={handlePlaceAtCell}
+              onRemovePlacement={handleRemovePlacement}
               onSelectPlacement={setSelectedPlacementId}
               placements={placements}
               selectedPlacementId={selectedPlacementId}
             />
           </div>
 
-          <aside className="layout-side">
+          <aside className="layout-middle">
             <EquipmentPalette
               activeItemId={activePaletteItemId}
               filter={filter}
@@ -365,32 +338,56 @@ export default function App() {
               search={search}
               selectedQuality={selectedEquipmentQuality}
             />
+            <SummaryPanel
+              location={powerLocation}
+              summary={summary}
+            />
+          </aside>
+
+          <aside className="layout-side">
             <OptimizerPanel
               onChange={setOptimizerSettings}
+              onSelectLocation={setSelectedPowerLocationId}
               onRun={handleRunOptimizer}
+              powerLocationId={powerLocation.id}
+              powerLocations={powerLocations}
               settings={optimizerSettings}
             />
             <AccessPanel
               accessMatrix={accessMatrix}
               items={equipmentItems}
               onSetAll={setAllAccess}
+              onSetQualityAll={setQualityAccess}
               onSetItemAll={setItemAccess}
               onToggle={toggleAccess}
-            />
-            <SummaryPanel
-              host={host}
-              itemMap={itemMap}
-              onRemove={handleRemovePlacement}
-              onRotate={handleRotatePlacement}
-              placements={placements}
-              selectedPlacementId={selectedPlacementId}
-              summary={summary}
             />
           </aside>
         </div>
       </main>
       <DragOverlay>
-        {dragPreviewLabel ? <div className="drag-overlay">{dragPreviewLabel}</div> : null}
+        {dragPreview ? (
+          <div
+            className="drag-overlay drag-overlay--shape"
+            style={{
+              '--overlay-width': String(getItemFootprint(itemMap[dragPreview.itemId]).width),
+              '--overlay-height': String(getItemFootprint(itemMap[dragPreview.itemId]).height),
+            } as CSSProperties}
+          >
+            <div className="drag-overlay__cells">
+              {Array.from({
+                length:
+                  getItemFootprint(itemMap[dragPreview.itemId]).width *
+                  getItemFootprint(itemMap[dragPreview.itemId]).height,
+              }).map((_, index) => (
+                <span key={index} className="drag-overlay__cell" />
+              ))}
+            </div>
+            <img alt="" className="drag-overlay__icon" src={itemMap[dragPreview.itemId].imageUrl} />
+            <span className="drag-overlay__quality">
+              <QualityIcon compact quality={dragPreview.quality} />
+            </span>
+          </div>
+        ) : null}
       </DragOverlay>
     </DndContext>
   );

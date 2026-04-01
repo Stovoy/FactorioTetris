@@ -17,18 +17,27 @@ export type EquipmentCategory =
   | 'logistics';
 
 export type ObjectiveId =
-  | 'minimum-power-deficit'
   | 'max-exoskeletons'
   | 'max-lasers'
   | 'max-shields'
-  | 'max-battery'
   | 'balanced';
+
+export type PowerLocationKind = 'surface' | 'space';
 
 export interface QualityLevel {
   id: QualityId;
   label: string;
   shortLabel: string;
   accent: string;
+  imageUrl: string;
+}
+
+export interface PowerLocation {
+  id: string;
+  label: string;
+  kind: PowerLocationKind;
+  solarMultiplier: number;
+  dayNightCycleSeconds: number | null;
 }
 
 export interface QualityMap<T> {
@@ -49,6 +58,7 @@ export interface EquipmentQualityStats {
   generationKw?: number;
   averageGenerationKw?: number;
   drawKw?: number;
+  averageDrawKw?: number;
   energyCapacityMj?: number;
   movementBonusPercent?: number;
   shieldHp?: number;
@@ -93,15 +103,14 @@ export interface Placement {
   quality: QualityId;
   x: number;
   y: number;
-  rotated: boolean;
 }
 
 export interface AutoOptimizeSettings {
   objective: ObjectiveId;
-  maxExoskeletons: number;
-  maxLaserDefenses: number;
-  minReactors: number;
-  reserveBatteries: number;
+  includeEnergyShield: boolean;
+  includeRoboport: boolean;
+  includeNightvision: boolean;
+  includeBeltImmunity: boolean;
 }
 
 export type AccessMatrix = Record<string, QualityMap<boolean>>;
@@ -110,12 +119,26 @@ export interface BuildSummary {
   usedCells: number;
   totalCells: number;
   inventorySlots: number;
+  dayGenerationKw: number;
+  nightGenerationKw: number;
   generationKw: number;
   averageGenerationKw: number;
   drawKw: number;
+  sustainedDrawKw: number;
+  peakDayNetKw: number;
+  peakNightNetKw: number;
+  dayNetKw: number;
+  nightNetKw: number;
   netPeakKw: number;
   netAverageKw: number;
   energyCapacityMj: number;
+  requiredCycleBufferMj: number;
+  cycleSustainable: boolean;
+  peakBurstSeconds: number | null;
+  peakSustainable: boolean;
+  batteryRechargeMinutes: number | null;
+  nightBatteryMinutes: number | null;
+  fullDarkMinutes: number;
   movementBonusPercent: number;
   shieldHp: number;
   shieldRechargePerSecond: number;
