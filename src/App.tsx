@@ -451,7 +451,7 @@ export default function App() {
     >
       <main className="app-shell">
         <div className="layout workspace">
-          <div className="layout-main">
+          <div className="layout-main layout-main--editor">
             <HostSelector
               hosts={gridHosts}
               onSelectHost={handleHostChange}
