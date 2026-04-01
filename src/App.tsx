@@ -1,4 +1,4 @@
-import { useMemo, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -19,6 +19,7 @@ import { autoOptimize } from './lib/optimizer';
 import { createPlacementId, doesPlacementFit, getItemFootprint } from './lib/grid';
 import { QualityIcon } from './components/QualityIcon';
 import { summarizeBuild } from './lib/stats';
+import { readAppUrlState, writeAppUrlState } from './lib/urlState';
 import type {
   AccessMatrix,
   AutoOptimizeSettings,
@@ -54,6 +55,120 @@ const createAccessMatrix = (): AccessMatrix =>
     equipmentItems.map((item) => [item.id, createEnabledQualities()]),
   );
 
+const defaultAppState = {
+  selectedHostId: 'modular-armor',
+  selectedPowerLocationId: 'nauvis',
+  selectedHostQuality: 'normal' as QualityId,
+  selectedEquipmentQuality: 'normal' as QualityId,
+  filter: 'all' as EquipmentCategory | 'all',
+  search: '',
+  optimizerSettings: initialOptimizer,
+  accessMatrix: createAccessMatrix(),
+  placements: [] as Placement[],
+};
+
+const qualityIds = new Set<QualityId>([
+  'normal',
+  'uncommon',
+  'rare',
+  'epic',
+  'legendary',
+]);
+const categoryIds = new Set<EquipmentCategory | 'all'>([
+  'all',
+  'generation',
+  'storage',
+  'mobility',
+  'defense',
+  'combat',
+  'utility',
+  'logistics',
+]);
+const hostIds = new Set(gridHosts.map((host) => host.id));
+const powerLocationIds = new Set(powerLocations.map((location) => location.id));
+const itemIds = new Set(equipmentItems.map((item) => item.id));
+const defaultQualityAccess = createEnabledQualities();
+
+const sanitizeAccessMatrix = (accessMatrix: AccessMatrix) =>
+  Object.fromEntries(
+    equipmentItems.map((item) => {
+      const current = accessMatrix[item.id];
+
+      return [
+        item.id,
+        {
+          normal: current?.normal ?? defaultQualityAccess.normal,
+          uncommon: current?.uncommon ?? defaultQualityAccess.uncommon,
+          rare: current?.rare ?? defaultQualityAccess.rare,
+          epic: current?.epic ?? defaultQualityAccess.epic,
+          legendary: current?.legendary ?? defaultQualityAccess.legendary,
+        },
+      ];
+    }),
+  ) as AccessMatrix;
+
+const sanitizeOptimizerSettings = (
+  settings: AutoOptimizeSettings,
+): AutoOptimizeSettings => ({
+  objective: (
+    ['balanced', 'max-exoskeletons', 'max-lasers', 'max-shields'] as const
+  ).includes(settings.objective)
+    ? settings.objective
+    : initialOptimizer.objective,
+  includeEnergyShield: Boolean(settings.includeEnergyShield),
+  includeRoboport: Boolean(settings.includeRoboport),
+  includeNightvision: Boolean(settings.includeNightvision),
+  includeBeltImmunity: Boolean(settings.includeBeltImmunity),
+});
+
+const createInitialAppState = () => {
+  if (typeof window === 'undefined') {
+    return defaultAppState;
+  }
+
+  const decoded = readAppUrlState(window.location.search);
+
+  if (!decoded) {
+    return defaultAppState;
+  }
+
+  return {
+    selectedHostId: hostIds.has(decoded.selectedHostId)
+      ? decoded.selectedHostId
+      : defaultAppState.selectedHostId,
+    selectedPowerLocationId: powerLocationIds.has(decoded.selectedPowerLocationId)
+      ? decoded.selectedPowerLocationId
+      : defaultAppState.selectedPowerLocationId,
+    selectedHostQuality: qualityIds.has(decoded.selectedHostQuality)
+      ? decoded.selectedHostQuality
+      : defaultAppState.selectedHostQuality,
+    selectedEquipmentQuality: qualityIds.has(decoded.selectedEquipmentQuality)
+      ? decoded.selectedEquipmentQuality
+      : defaultAppState.selectedEquipmentQuality,
+    filter: categoryIds.has(decoded.filter)
+      ? decoded.filter
+      : defaultAppState.filter,
+    search: typeof decoded.search === 'string' ? decoded.search : defaultAppState.search,
+    optimizerSettings: sanitizeOptimizerSettings(decoded.optimizerSettings),
+    accessMatrix: sanitizeAccessMatrix(decoded.accessMatrix),
+    placements: decoded.placements
+      .filter(
+        (placement) =>
+          itemIds.has(placement.itemId) &&
+          qualityIds.has(placement.quality) &&
+          Number.isFinite(placement.x) &&
+          Number.isFinite(placement.y),
+      )
+      .map((placement) => ({
+        id: createPlacementId(),
+        itemId: placement.itemId,
+        quality: placement.quality,
+        x: Math.trunc(placement.x),
+        y: Math.trunc(placement.y),
+      })),
+  };
+};
+
 function parseCellId(cellId: string | null) {
   if (!cellId?.startsWith('cell:')) {
     return null;
@@ -64,22 +179,23 @@ function parseCellId(cellId: string | null) {
 }
 
 export default function App() {
-  const [selectedHostId, setSelectedHostId] = useState('modular-armor');
+  const initialState = useMemo(() => createInitialAppState(), []);
+  const [selectedHostId, setSelectedHostId] = useState(initialState.selectedHostId);
   const [selectedPowerLocationId, setSelectedPowerLocationId] =
-    useState('nauvis');
+    useState(initialState.selectedPowerLocationId);
   const [selectedHostQuality, setSelectedHostQuality] =
-    useState<QualityId>('normal');
+    useState<QualityId>(initialState.selectedHostQuality);
   const [selectedEquipmentQuality, setSelectedEquipmentQuality] =
-    useState<QualityId>('normal');
+    useState<QualityId>(initialState.selectedEquipmentQuality);
   const [activePaletteItemId, setActivePaletteItemId] = useState<string | null>(null);
   const [selectedPlacementId, setSelectedPlacementId] = useState<string | null>(null);
-  const [placements, setPlacements] = useState<Placement[]>([]);
-  const [filter, setFilter] = useState<EquipmentCategory | 'all'>('all');
-  const [search, setSearch] = useState('');
+  const [placements, setPlacements] = useState<Placement[]>(initialState.placements);
+  const [filter, setFilter] = useState<EquipmentCategory | 'all'>(initialState.filter);
+  const [search, setSearch] = useState(initialState.search);
   const [dragPreview, setDragPreview] = useState<DragPreview | null>(null);
   const [optimizerSettings, setOptimizerSettings] =
-    useState<AutoOptimizeSettings>(initialOptimizer);
-  const [accessMatrix, setAccessMatrix] = useState<AccessMatrix>(createAccessMatrix);
+    useState<AutoOptimizeSettings>(initialState.optimizerSettings);
+  const [accessMatrix, setAccessMatrix] = useState<AccessMatrix>(initialState.accessMatrix);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -121,6 +237,35 @@ export default function App() {
     () => summarizeBuild(host, selectedHostQuality, placements, itemMap, powerLocation),
     [host, itemMap, placements, powerLocation, selectedHostQuality],
   );
+
+  useEffect(() => {
+    writeAppUrlState({
+      selectedHostId,
+      selectedPowerLocationId,
+      selectedHostQuality,
+      selectedEquipmentQuality,
+      filter,
+      search,
+      optimizerSettings,
+      accessMatrix,
+      placements: placements.map((placement) => ({
+        itemId: placement.itemId,
+        quality: placement.quality,
+        x: placement.x,
+        y: placement.y,
+      })),
+    });
+  }, [
+    accessMatrix,
+    filter,
+    optimizerSettings,
+    placements,
+    search,
+    selectedEquipmentQuality,
+    selectedHostId,
+    selectedHostQuality,
+    selectedPowerLocationId,
+  ]);
 
   const placeItemAt = (
     itemId: string,
